@@ -3,8 +3,9 @@ import { Canvas as FabricCanvas } from 'fabric'
 import Sidebar from './components/Sidebar'
 import GangSheetCanvas from './components/GangSheetCanvas'
 import PropertiesPanel from './components/PropertiesPanel'
-import Ruler from './components/Ruler'
 import DPIWarning from './components/DPIWarning'
+import ZoomControls from './components/ZoomControls'
+import TopNavbar from './components/TopNavbar'
 import { exportCanvas300DPI } from './lib/export'
 
 export interface SelectedObjectInfo {
@@ -16,46 +17,64 @@ export interface SelectedObjectInfo {
   scaleX: number
   scaleY: number
   dpi?: number
+  fill?: string
 }
 
 export default function App() {
   const [selectedObject, setSelectedObject] = useState<SelectedObjectInfo | null>(null)
   const [dpiWarning, setDpiWarning] = useState<{ dpi: number } | null>(null)
+  const [zoom, setZoom] = useState(100)
+  const [sheetWidth, setSheetWidth] = useState(22) // inches
+  const [sheetHeight, setSheetHeight] = useState(60) // inches
   const canvasRef = useRef<FabricCanvas | null>(null)
 
   const handleExport = useCallback(() => {
     if (canvasRef.current) {
-      exportCanvas300DPI(canvasRef.current)
+      exportCanvas300DPI(canvasRef.current, sheetWidth, sheetHeight)
+    }
+  }, [sheetWidth, sheetHeight])
+
+  const handleZoom = useCallback((newZoom: number) => {
+    setZoom(newZoom)
+  }, [])
+
+  const handleColorChange = useCallback((color: string) => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+    const obj = canvas.getActiveObject()
+    if (obj && (obj.type === 'i-text' || obj.type === 'text')) {
+      obj.set('fill', color)
+      canvas.requestRenderAll()
+      setSelectedObject(prev => prev ? { ...prev, fill: color } : prev)
     }
   }, [])
 
   return (
-    <div className="flex h-full w-full bg-gray-900 text-white">
-      <Sidebar canvasRef={canvasRef} />
-      <div className="flex-1 flex flex-col overflow-hidden">
-        <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
-          <h1 className="text-lg font-semibold">DTF Gang Sheet Tool</h1>
-          <button
-            onClick={handleExport}
-            className="px-4 py-1.5 bg-blue-600 hover:bg-blue-500 rounded text-sm font-medium transition-colors"
-          >
-            Export 300 DPI PNG
-          </button>
+    <div className="flex flex-col h-full w-full bg-gray-900 text-white">
+      <TopNavbar
+        sheetWidth={sheetWidth}
+        sheetHeight={sheetHeight}
+        onSheetWidthChange={setSheetWidth}
+        onSheetHeightChange={setSheetHeight}
+        onExport={handleExport}
+      />
+      <div className="flex flex-1 overflow-hidden">
+        <Sidebar canvasRef={canvasRef} />
+        <div className="flex-1 relative overflow-hidden bg-gray-950">
+          <GangSheetCanvas
+            canvasRef={canvasRef}
+            onSelect={setSelectedObject}
+            onDpiWarning={setDpiWarning}
+            zoom={zoom}
+            onZoomChange={handleZoom}
+            sheetWidthInches={sheetWidth}
+            sheetHeightInches={sheetHeight}
+          />
+          <ZoomControls zoom={zoom} onZoomChange={handleZoom} />
+          {dpiWarning && <DPIWarning dpi={dpiWarning.dpi} onDismiss={() => setDpiWarning(null)} />}
         </div>
-        <div className="flex-1 relative overflow-auto bg-gray-950">
-          <Ruler direction="horizontal" />
-          <div className="flex">
-            <Ruler direction="vertical" />
-            <GangSheetCanvas
-              canvasRef={canvasRef}
-              onSelect={setSelectedObject}
-              onDpiWarning={setDpiWarning}
-            />
-          </div>
-        </div>
-        {dpiWarning && <DPIWarning dpi={dpiWarning.dpi} onDismiss={() => setDpiWarning(null)} />}
+        <PropertiesPanel selected={selectedObject} onColorChange={handleColorChange} />
       </div>
-      <PropertiesPanel selected={selectedObject} />
     </div>
   )
 }

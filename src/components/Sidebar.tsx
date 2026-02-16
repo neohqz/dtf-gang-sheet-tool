@@ -1,5 +1,5 @@
 import { type RefObject, useRef } from 'react'
-import { Canvas as FabricCanvas, FabricImage, FabricText, Rect, Circle, Triangle } from 'fabric'
+import { Canvas as FabricCanvas, FabricImage, IText, Rect, Circle, Triangle } from 'fabric'
 import { Upload, Type, Square, CircleIcon, TriangleIcon } from 'lucide-react'
 
 interface Props {
@@ -32,11 +32,12 @@ export default function Sidebar({ canvasRef }: Props) {
 
   const addText = () => {
     if (!canvasRef.current) return
-    const text = new FabricText('Double-click to edit', {
+    const text = new IText('Click to edit', {
       left: 100,
       top: 100,
       fontSize: 24,
-      fill: '#ffffff',
+      fill: '#000000',
+      editable: true,
     })
     canvasRef.current.add(text)
     canvasRef.current.setActiveObject(text)
